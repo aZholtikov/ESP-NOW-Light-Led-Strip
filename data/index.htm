@@ -1,0 +1,172 @@
+<html>
+
+<head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.9">
+    <link rel="stylesheet" href="style.css">
+    <script type="text/javascript" src="function.js"></script>
+    <title>ESP-NOW Led/Light Strip</title>
+</head>
+
+<body onload="load();">
+    <form class="box">
+        <h1>ESP-NOW Led/Light Strip </h1>
+        <div class="wrapper">
+            <p class="text">Firmware:</p>
+            <p class="text" id="version"></p>
+            <input id="firmware" value="{{firmware}}" hidden />
+        </div>
+
+        <div class="wrapper">
+            <p class="text">Device name:</p>
+            <input id="deviceName" value="{{deviceName}}" placeholder="Name" autocomplete="off" label
+                title="ESP-NOW device name (up to 150 characters)" />
+        </div>
+
+        <div class="wrapper">
+            <p class="text">ESP-NOW network name:</p>
+            <input id="espnowNetName" value="{{espnowNetName}}" placeholder="Name" autocomplete="off" label
+                title="ESP-NOW network name (1 to 20 characters)" />
+        </div>
+        
+        <div class="wrapper">
+            <p class="text-select">Device type:</p>
+            <input id="ledType" value="{{ledType}}" hidden />
+            <p><select id="ledTypeSelect">
+                    <option value="0">NONE</option>
+                    <option value="1">W</option>
+                    <option value="2">WW</option>
+                    <option value="3">RGB</option>
+                    <option value="4">RGBW</option>
+                    <option value="5">RGBWW</option>
+                </select></p>
+        </div>
+
+        <div class="wrapper">
+            <p class="text-select">Cold white GPIO:</p>
+            <input id="coldWhitePin" value="{{coldWhitePin}}" hidden />
+            <p><select id="coldWhitePinSelect">
+                    <option value="0">NONE</option>
+                    <option value="1">GPIO01</option>
+                    <option value="2">GPIO02</option>
+                    <option value="3">GPIO03</option>
+                    <option value="4">GPIO04</option>
+                    <option value="5">GPIO05</option>
+                    <option value="6">GPIO06</option>
+                    <option value="7">GPIO07</option>
+                    <option value="8">GPIO08</option>
+                    <option value="9">GPIO09</option>
+                    <option value="10">GPIO10</option>
+                    <option value="11">GPIO11</option>
+                    <option value="12">GPIO12</option>
+                    <option value="13">GPIO13</option>
+                    <option value="14">GPIO14</option>
+                    <option value="15">GPIO15</option>
+                    <option value="16">GPIO16</option>
+                </select></p>
+        </div>
+
+        <div class="wrapper">
+            <p class="text-select">Warm white GPIO:</p>
+            <input id="warmWhitePin" value="{{warmWhitePin}}" hidden />
+            <p><select id="warmWhitePinSelect">
+                    <option value="0">NONE</option>
+                    <option value="1">GPIO01</option>
+                    <option value="2">GPIO02</option>
+                    <option value="3">GPIO03</option>
+                    <option value="4">GPIO04</option>
+                    <option value="5">GPIO05</option>
+                    <option value="6">GPIO06</option>
+                    <option value="7">GPIO07</option>
+                    <option value="8">GPIO08</option>
+                    <option value="9">GPIO09</option>
+                    <option value="10">GPIO10</option>
+                    <option value="11">GPIO11</option>
+                    <option value="12">GPIO12</option>
+                    <option value="13">GPIO13</option>
+                    <option value="14">GPIO14</option>
+                    <option value="15">GPIO15</option>
+                    <option value="16">GPIO16</option>
+                </select></p>
+        </div>
+
+        <div class="wrapper">
+            <p class="text-select">Red GPIO:</p>
+            <input id="redPin" value="{{redPin}}" hidden />
+            <p><select id="redPinSelect">
+                    <option value="0">NONE</option>
+                    <option value="1">GPIO01</option>
+                    <option value="2">GPIO02</option>
+                    <option value="3">GPIO03</option>
+                    <option value="4">GPIO04</option>
+                    <option value="5">GPIO05</option>
+                    <option value="6">GPIO06</option>
+                    <option value="7">GPIO07</option>
+                    <option value="8">GPIO08</option>
+                    <option value="9">GPIO09</option>
+                    <option value="10">GPIO10</option>
+                    <option value="11">GPIO11</option>
+                    <option value="12">GPIO12</option>
+                    <option value="13">GPIO13</option>
+                    <option value="14">GPIO14</option>
+                    <option value="15">GPIO15</option>
+                    <option value="16">GPIO16</option>
+                </select></p>
+        </div>
+
+        <div class="wrapper">
+            <p class="text-select">Green GPIO:</p>
+            <input id="greenPin" value="{{greenPin}}" hidden />
+            <p><select id="greenPinSelect">
+                    <option value="0">NONE</option>
+                    <option value="1">GPIO01</option>
+                    <option value="2">GPIO02</option>
+                    <option value="3">GPIO03</option>
+                    <option value="4">GPIO04</option>
+                    <option value="5">GPIO05</option>
+                    <option value="6">GPIO06</option>
+                    <option value="7">GPIO07</option>
+                    <option value="8">GPIO08</option>
+                    <option value="9">GPIO09</option>
+                    <option value="10">GPIO10</option>
+                    <option value="11">GPIO11</option>
+                    <option value="12">GPIO12</option>
+                    <option value="13">GPIO13</option>
+                    <option value="14">GPIO14</option>
+                    <option value="15">GPIO15</option>
+                    <option value="16">GPIO16</option>
+                </select></p>
+        </div>
+
+        <div class="wrapper">
+            <p class="text-select">Blue GPIO:</p>
+            <input id="bluePin" value="{{bluePin}}" hidden />
+            <p><select id="bluePinSelect">
+                    <option value="0">NONE</option>
+                    <option value="1">GPIO01</option>
+                    <option value="2">GPIO02</option>
+                    <option value="3">GPIO03</option>
+                    <option value="4">GPIO04</option>
+                    <option value="5">GPIO05</option>
+                    <option value="6">GPIO06</option>
+                    <option value="7">GPIO07</option>
+                    <option value="8">GPIO08</option>
+                    <option value="9">GPIO09</option>
+                    <option value="10">GPIO10</option>
+                    <option value="11">GPIO11</option>
+                    <option value="12">GPIO12</option>
+                    <option value="13">GPIO13</option>
+                    <option value="14">GPIO14</option>
+                    <option value="15">GPIO15</option>
+                    <option value="16">GPIO16</option>
+                </select></p>
+        </div>
+
+        <div class="wrapper">
+            <input class="btn" type="submit" value="Save" onclick="saveSetting(this);">
+            <input class="btn" type="submit" value="Restart" onclick="restart(this);">
+        </div>
+    </form>
+</body>
+
+</html>
