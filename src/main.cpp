@@ -26,7 +26,7 @@ const String firmware{"1.0"};
 
 String espnowNetName{"DEFAULT"};
 
-String deviceName{"ESP-NOW Light/Led Strip"};
+String deviceName{"ESP-NOW light/led strip"};
 
 uint8_t ledType{ENLT_NONE};
 bool ledStatus{false};
