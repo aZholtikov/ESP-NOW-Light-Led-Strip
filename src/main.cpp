@@ -22,7 +22,7 @@ String getValue(String data, char separator, byte index);
 
 void changeLedState(void);
 
-const String firmware{"1.0"};
+const String firmware{"1.1"};
 
 String espnowNetName{"DEFAULT"};
 
@@ -349,7 +349,7 @@ void sendConfigMessage()
   StaticJsonDocument<sizeof(esp_now_payload_data_t::message)> json;
   json["name"] = deviceName;
   json["unit"] = 1;
-  json["type"] = getValueName(HACT_LIGHT);
+  json["type"] = HACT_LIGHT;
   json["class"] = ledType;
   char buffer[sizeof(esp_now_payload_data_t::message)]{0};
   serializeJsonPretty(json, buffer);
