@@ -79,7 +79,7 @@ bool statusMessageResendTimerSemaphore{false};
 
 void setup()
 {
-  analogWriteRange(255);
+  analogWriteRange(256);
 
   SPIFFS.begin();
 

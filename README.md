@@ -19,7 +19,7 @@ ESP-NOW based light/led strip controller for ESP8266. Alternate firmware for Tuy
 
 ## Tested on
 
-Coming soon.
+See [here](https://github.com/aZholtikov/ESP-NOW-Light-Led-Strip/tree/main/hardware).
 
 ## Attention
 
