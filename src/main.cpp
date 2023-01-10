@@ -79,7 +79,7 @@ bool statusMessageResendTimerSemaphore{false};
 
 void setup()
 {
-  analogWriteRange(256);
+  analogWriteRange(255);
 
   SPIFFS.begin();
 
@@ -182,6 +182,7 @@ void onUnicastReceiving(const char *data, const byte *sender)
   if (incomingData.payloadsType == ENPT_UPDATE)
   {
     WiFi.softAP(("ESP-NOW Light " + myNet.getNodeMac()).c_str(), "12345678", 1, 0);
+    webServer.begin();
     apModeHideTimer.once(300, apModeHideTimerCallback);
   }
   if (incomingData.payloadsType == ENPT_RESTART)
@@ -471,6 +472,7 @@ void gatewayAvailabilityCheckTimerCallback()
 void apModeHideTimerCallback()
 {
   WiFi.softAP(("ESP-NOW Light " + myNet.getNodeMac()).c_str(), "12345678", 1, 1);
+  webServer.end();
 }
 
 void attributesMessageTimerCallback()
