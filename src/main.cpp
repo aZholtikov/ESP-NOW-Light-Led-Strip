@@ -30,7 +30,7 @@ typedef struct
 
 std::vector<espnow_message_t> espnowMessage;
 
-const String firmware{"1.12"};
+const String firmware{"1.13"};
 
 String espnowNetName{"DEFAULT"};
 
@@ -102,6 +102,7 @@ void setup()
 
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
   myNet.begin(espnowNetName.c_str());
+  // myNet.setCryptKey("VERY_LONG_CRYPT_KEY"); // If encryption is used, the key must be set same of all another ESP-NOW devices in network.
 
   myNet.setOnBroadcastReceivingCallback(onBroadcastReceiving);
   myNet.setOnUnicastReceivingCallback(onUnicastReceiving);
