@@ -152,7 +152,11 @@ void onBroadcastReceiving(const char *data, const uint8_t *sender)
     {
       wasMqttAvailable = temp;
       if (temp)
+      {
         sendConfigMessage();
+        sendAttributesMessage();
+        sendStatusMessage();
+      }
     }
     gatewayAvailabilityCheckTimer.once(15, gatewayAvailabilityCheckTimerCallback);
   }
