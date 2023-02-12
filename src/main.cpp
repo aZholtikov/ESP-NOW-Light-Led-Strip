@@ -31,7 +31,7 @@ typedef struct
 
 std::vector<espnow_message_t> espnowMessage;
 
-const String firmware{"1.14"};
+const String firmware{"1.15"};
 
 String espnowNetName{"DEFAULT"};
 
