@@ -31,20 +31,20 @@ typedef struct
 
 std::vector<espnow_message_t> espnowMessage;
 
-const String firmware{"1.15"};
+const String firmware{"1.2"};
 
 String espnowNetName{"DEFAULT"};
 
 String deviceName = "ESP-NOW light " + String(ESP.getChipId(), HEX);
 
 uint8_t ledType{ENLT_NONE};
-bool ledStatus{false};
 uint8_t coldWhitePin{0};
 uint8_t warmWhitePin{0};
 uint8_t redPin{0};
 uint8_t greenPin{0};
 uint8_t bluePin{0};
 
+bool ledStatus{false};
 uint8_t brightness{255};
 uint16_t temperature{255};
 uint8_t red{255};
@@ -54,9 +54,6 @@ uint8_t blue{255};
 bool wasMqttAvailable{false};
 
 uint8_t gatewayMAC[6]{0};
-
-const String payloadOn{"ON"};
-const String payloadOff{"OFF"};
 
 ZHNetwork myNet;
 AsyncWebServer webServer(80);
@@ -173,7 +170,7 @@ void onUnicastReceiving(const char *data, const uint8_t *sender)
   {
     deserializeJson(json, incomingData.message);
     if (json["set"])
-      ledStatus = json["set"] == payloadOn ? true : false;
+      ledStatus = json["set"] == "ON" ? true : false;
     if (json["brightness"])
       brightness = json["brightness"];
     if (json["temperature"])
@@ -344,12 +341,10 @@ void sendConfigMessage()
   esp_now_payload_data_t outgoingData{ENDT_LED, ENPT_CONFIG};
   espnow_message_t message;
   StaticJsonDocument<sizeof(esp_now_payload_data_t::message)> json;
-  json["name"] = deviceName;
-  json["unit"] = 1;
-  json["type"] = HACT_LIGHT;
-  json["class"] = ledType;
-  json["payload_on"] = payloadOn;
-  json["payload_off"] = payloadOff;
+  json[MCMT_DEVICE_NAME] = deviceName;
+  json[MCMT_DEVICE_UNIT] = 1;
+  json[MCMT_COMPONENT_TYPE] = HACT_LIGHT;
+  json[MCMT_DEVICE_CLASS] = ledType;
   serializeJsonPretty(json, outgoingData.message);
   memcpy(&message.message, &outgoingData, sizeof(esp_now_payload_data_t));
   message.id = myNet.sendUnicastMessage(message.message, gatewayMAC, true);
@@ -365,7 +360,7 @@ void sendStatusMessage()
   esp_now_payload_data_t outgoingData{ENDT_LED, ENPT_STATE};
   espnow_message_t message;
   StaticJsonDocument<sizeof(esp_now_payload_data_t::message)> json;
-  json["state"] = ledStatus ? payloadOn : payloadOff;
+  json["state"] = ledStatus ? "ON" : "OFF";
   json["brightness"] = brightness;
   json["temperature"] = temperature;
   json["rgb"] = String(red) + "," + String(green) + "," + String(blue);
