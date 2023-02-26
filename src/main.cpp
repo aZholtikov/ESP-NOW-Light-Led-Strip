@@ -214,6 +214,7 @@ void onConfirmReceiving(const uint8_t *target, const uint16_t id, const bool sta
 
 void loadConfig()
 {
+  ETS_GPIO_INTR_DISABLE();
   if (!LittleFS.exists("/config.json"))
     saveConfig();
   File file = LittleFS.open("/config.json", "r");
@@ -235,10 +236,13 @@ void loadConfig()
   green = json["green"];
   blue = json["blue"];
   file.close();
+  delay(50);
+  ETS_GPIO_INTR_ENABLE();
 }
 
 void saveConfig()
 {
+  ETS_GPIO_INTR_DISABLE();
   StaticJsonDocument<512> json;
   json["firmware"] = firmware;
   json["espnowNetName"] = espnowNetName;
@@ -259,6 +263,8 @@ void saveConfig()
   File file = LittleFS.open("/config.json", "w");
   serializeJsonPretty(json, file);
   file.close();
+  delay(50);
+  ETS_GPIO_INTR_ENABLE();
 }
 
 void setupWebServer()
