@@ -1,4 +1,4 @@
-# Light/led strip controller for ESP8266
+# ESP-NOW light/led strip controller for ESP8266
 
 ESP-NOW based light/led strip controller for ESP8266. Alternate firmware for Tuya/SmartLife WiFi light/led strip controllers.
 
