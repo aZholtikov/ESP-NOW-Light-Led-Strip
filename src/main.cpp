@@ -34,7 +34,6 @@ typedef struct
 
 struct deviceConfig
 {
-  const String firmware{"1.21"};
   String espnowNetName{"DEFAULT"};
   String deviceName = "ESP-NOW light " + String(ESP.getChipId(), HEX);
   uint8_t ledType{ENLT_NONE};
@@ -46,6 +45,8 @@ struct deviceConfig
 } config;
 
 std::vector<espnow_message_t> espnowMessage;
+
+const String firmware{"1.21"};
 
 bool ledStatus{false};
 uint8_t brightness{255};
@@ -311,7 +312,7 @@ void setupWebServer()
                {
         String configJson;
         DynamicJsonDocument json(384); // To calculate the buffer size uses https://arduinojson.org/v6/assistant.
-        json["firmware"] = config.firmware;
+        json["firmware"] = firmware;
         json["espnowNetName"] = config.espnowNetName;
         json["deviceName"] = config.deviceName;
         json["ledType"] = config.ledType;
@@ -349,7 +350,7 @@ void sendAttributesMessage()
   json["Type"] = "ESP-NOW light";
   json["MCU"] = "ESP8266";
   json["MAC"] = myNet.getNodeMac();
-  json["Firmware"] = config.firmware;
+  json["Firmware"] = firmware;
   json["Library"] = myNet.getFirmwareVersion();
   json["Uptime"] = "Days:" + String(days) + " Hours:" + String(hours - (days * 24)) + " Mins:" + String(mins - (hours * 60));
   serializeJsonPretty(json, outgoingData.message);
