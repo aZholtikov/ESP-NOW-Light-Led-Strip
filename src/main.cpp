@@ -2,6 +2,7 @@
 #include "ArduinoOTA.h"
 #include "ESPAsyncWebServer.h" // https://github.com/aZholtikov/Async-Web-Server
 #include "LittleFS.h"
+#include "EEPROM.h"
 #include "Ticker.h"
 #include "ZHNetwork.h"
 #include "ZHConfig.h"
@@ -12,6 +13,8 @@ void onConfirmReceiving(const uint8_t *target, const uint16_t id, const bool sta
 
 void loadConfig(void);
 void saveConfig(void);
+void loadStatus(void);
+void saveStatus(void);
 void setupWebServer(void);
 
 void sendAttributesMessage(void);
@@ -29,20 +32,20 @@ typedef struct
   char message[200]{0};
 } espnow_message_t;
 
+struct deviceConfig
+{
+  const String firmware{"1.21"};
+  String espnowNetName{"DEFAULT"};
+  String deviceName = "ESP-NOW light " + String(ESP.getChipId(), HEX);
+  uint8_t ledType{ENLT_NONE};
+  uint8_t coldWhitePin{0};
+  uint8_t warmWhitePin{0};
+  uint8_t redPin{0};
+  uint8_t greenPin{0};
+  uint8_t bluePin{0};
+} config;
+
 std::vector<espnow_message_t> espnowMessage;
-
-const String firmware{"1.2"};
-
-String espnowNetName{"DEFAULT"};
-
-String deviceName = "ESP-NOW light " + String(ESP.getChipId(), HEX);
-
-uint8_t ledType{ENLT_NONE};
-uint8_t coldWhitePin{0};
-uint8_t warmWhitePin{0};
-uint8_t redPin{0};
-uint8_t greenPin{0};
-uint8_t bluePin{0};
 
 bool ledStatus{false};
 uint8_t brightness{255};
@@ -84,22 +87,23 @@ void setup()
   LittleFS.begin();
 
   loadConfig();
+  loadStatus();
 
-  if (coldWhitePin)
-    pinMode(coldWhitePin, OUTPUT);
-  if (warmWhitePin)
-    pinMode(warmWhitePin, OUTPUT);
-  if (redPin)
-    pinMode(redPin, OUTPUT);
-  if (greenPin)
-    pinMode(greenPin, OUTPUT);
-  if (bluePin)
-    pinMode(bluePin, OUTPUT);
+  if (config.coldWhitePin)
+    pinMode(config.coldWhitePin, OUTPUT);
+  if (config.warmWhitePin)
+    pinMode(config.warmWhitePin, OUTPUT);
+  if (config.redPin)
+    pinMode(config.redPin, OUTPUT);
+  if (config.greenPin)
+    pinMode(config.greenPin, OUTPUT);
+  if (config.bluePin)
+    pinMode(config.bluePin, OUTPUT);
 
   changeLedState();
 
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
-  myNet.begin(espnowNetName.c_str());
+  myNet.begin(config.espnowNetName.c_str());
   // myNet.setCryptKey("VERY_LONG_CRYPT_KEY"); // If encryption is used, the key must be set same of all another ESP-NOW devices in network.
 
   myNet.setOnBroadcastReceivingCallback(onBroadcastReceiving);
@@ -142,7 +146,7 @@ void onBroadcastReceiving(const char *data, const uint8_t *sender)
   if (myNet.macToString(gatewayMAC) == myNet.macToString(sender) && incomingData.payloadsType == ENPT_KEEP_ALIVE)
   {
     isGatewayAvailable = true;
-    StaticJsonDocument<sizeof(esp_now_payload_data_t::message)> json;
+    DynamicJsonDocument json(sizeof(esp_now_payload_data_t::message));
     deserializeJson(json, incomingData.message);
     bool temp = json["MQTT"] == "online" ? true : false;
     if (wasMqttAvailable != temp)
@@ -165,7 +169,7 @@ void onUnicastReceiving(const char *data, const uint8_t *sender)
   memcpy(&incomingData, data, sizeof(esp_now_payload_data_t));
   if (incomingData.deviceType != ENDT_GATEWAY || myNet.macToString(gatewayMAC) != myNet.macToString(sender))
     return;
-  StaticJsonDocument<sizeof(esp_now_payload_data_t::message)> json;
+  DynamicJsonDocument json(sizeof(esp_now_payload_data_t::message));
   if (incomingData.payloadsType == ENPT_SET)
   {
     deserializeJson(json, incomingData.message);
@@ -215,21 +219,42 @@ void onConfirmReceiving(const uint8_t *target, const uint16_t id, const bool sta
 void loadConfig()
 {
   ETS_GPIO_INTR_DISABLE();
-  if (!LittleFS.exists("/config.json"))
+  EEPROM.begin(4096);
+  if (EEPROM.read(4095) == 254)
+  {
+    EEPROM.get(0, config);
+    EEPROM.end();
+  }
+  else
+  {
+    EEPROM.end();
     saveConfig();
-  File file = LittleFS.open("/config.json", "r");
+  }
+  delay(50);
+  ETS_GPIO_INTR_ENABLE();
+}
+
+void saveConfig()
+{
+  ETS_GPIO_INTR_DISABLE();
+  EEPROM.begin(4096);
+  EEPROM.write(4095, 254);
+  EEPROM.put(0, config);
+  EEPROM.end();
+  delay(50);
+  ETS_GPIO_INTR_ENABLE();
+}
+
+void loadStatus()
+{
+  ETS_GPIO_INTR_DISABLE();
+  if (!LittleFS.exists("/status.json"))
+    saveStatus();
+  File file = LittleFS.open("/status.json", "r");
   String jsonFile = file.readString();
-  StaticJsonDocument<512> json;
+  DynamicJsonDocument json(192); // To calculate the buffer size uses https://arduinojson.org/v6/assistant.
   deserializeJson(json, jsonFile);
-  espnowNetName = json["espnowNetName"].as<String>();
-  deviceName = json["deviceName"].as<String>();
-  ledType = json["ledType"];
-  ledStatus = json["ledStatus"];
-  coldWhitePin = json["coldWhitePin"];
-  warmWhitePin = json["warmWhitePin"];
-  redPin = json["redPin"];
-  greenPin = json["greenPin"];
-  bluePin = json["bluePin"];
+  ledStatus = json["status"];
   brightness = json["brightness"];
   temperature = json["temperature"];
   red = json["red"];
@@ -240,27 +265,18 @@ void loadConfig()
   ETS_GPIO_INTR_ENABLE();
 }
 
-void saveConfig()
+void saveStatus()
 {
   ETS_GPIO_INTR_DISABLE();
-  StaticJsonDocument<512> json;
-  json["firmware"] = firmware;
-  json["espnowNetName"] = espnowNetName;
-  json["deviceName"] = deviceName;
-  json["ledType"] = ledType;
-  json["ledStatus"] = ledStatus;
-  json["coldWhitePin"] = coldWhitePin;
-  json["warmWhitePin"] = warmWhitePin;
-  json["redPin"] = redPin;
-  json["greenPin"] = greenPin;
-  json["bluePin"] = bluePin;
+  DynamicJsonDocument json(128); // To calculate the buffer size uses https://arduinojson.org/v6/assistant.
+  json["status"] = ledStatus;
   json["brightness"] = brightness;
   json["temperature"] = temperature;
   json["red"] = red;
   json["green"] = green;
   json["blue"] = blue;
   json["system"] = "empty";
-  File file = LittleFS.open("/config.json", "w");
+  File file = LittleFS.open("/status.json", "w");
   serializeJsonPretty(json, file);
   file.close();
   delay(50);
@@ -272,18 +288,40 @@ void setupWebServer()
   webServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
                { request->send(LittleFS, "/index.htm"); });
 
+  webServer.on("/function.js", HTTP_GET, [](AsyncWebServerRequest *request)
+               { request->send(LittleFS, "/function.js"); });
+
+  webServer.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request)
+               { request->send(LittleFS, "/style.css"); });
+
   webServer.on("/setting", HTTP_GET, [](AsyncWebServerRequest *request)
                {
-        ledType = request->getParam("ledType")->value().toInt();
-        coldWhitePin = request->getParam("coldWhitePin")->value().toInt();
-        warmWhitePin = request->getParam("warmWhitePin")->value().toInt();
-        redPin = request->getParam("redPin")->value().toInt();
-        greenPin = request->getParam("greenPin")->value().toInt();
-        bluePin = request->getParam("bluePin")->value().toInt();
-        deviceName = request->getParam("deviceName")->value();
-        espnowNetName = request->getParam("espnowNetName")->value();
+        config.ledType = request->getParam("ledType")->value().toInt();
+        config.coldWhitePin = request->getParam("coldWhitePin")->value().toInt();
+        config.warmWhitePin = request->getParam("warmWhitePin")->value().toInt();
+        config.redPin = request->getParam("redPin")->value().toInt();
+        config.greenPin = request->getParam("greenPin")->value().toInt();
+        config.bluePin = request->getParam("bluePin")->value().toInt();
+        config.deviceName = request->getParam("deviceName")->value();
+        config.espnowNetName = request->getParam("espnowNetName")->value();
         request->send(200);
         saveConfig(); });
+
+  webServer.on("/config", HTTP_GET, [](AsyncWebServerRequest *request)
+               {
+        String configJson;
+        DynamicJsonDocument json(384); // To calculate the buffer size uses https://arduinojson.org/v6/assistant.
+        json["firmware"] = config.firmware;
+        json["espnowNetName"] = config.espnowNetName;
+        json["deviceName"] = config.deviceName;
+        json["ledType"] = config.ledType;
+        json["coldWhitePin"] = config.coldWhitePin;
+        json["warmWhitePin"] = config.warmWhitePin;
+        json["redPin"] = config.redPin;
+        json["greenPin"] = config.greenPin;
+        json["bluePin"] = config.bluePin;
+        serializeJsonPretty(json, configJson);
+        request->send(200, "application/json", configJson); });
 
   webServer.on("/restart", HTTP_GET, [](AsyncWebServerRequest *request)
                {
@@ -291,13 +329,7 @@ void setupWebServer()
         ESP.restart(); });
 
   webServer.onNotFound([](AsyncWebServerRequest *request)
-                       { 
-        if (LittleFS.exists(request->url()))
-        request->send(LittleFS, request->url());
-        else
-        {
-        request->send(404, "text/plain", "File Not Found");
-        } });
+                       { request->send(404, "text/plain", "File Not Found"); });
 
   webServer.begin();
 }
@@ -313,11 +345,11 @@ void sendAttributesMessage()
   uint32_t days = hours / 24;
   esp_now_payload_data_t outgoingData{ENDT_LED, ENPT_ATTRIBUTES};
   espnow_message_t message;
-  StaticJsonDocument<sizeof(esp_now_payload_data_t::message)> json;
+  DynamicJsonDocument json(sizeof(esp_now_payload_data_t::message));
   json["Type"] = "ESP-NOW light";
   json["MCU"] = "ESP8266";
   json["MAC"] = myNet.getNodeMac();
-  json["Firmware"] = firmware;
+  json["Firmware"] = config.firmware;
   json["Library"] = myNet.getFirmwareVersion();
   json["Uptime"] = "Days:" + String(days) + " Hours:" + String(hours - (days * 24)) + " Mins:" + String(mins - (hours * 60));
   serializeJsonPretty(json, outgoingData.message);
@@ -346,11 +378,11 @@ void sendConfigMessage()
     return;
   esp_now_payload_data_t outgoingData{ENDT_LED, ENPT_CONFIG};
   espnow_message_t message;
-  StaticJsonDocument<sizeof(esp_now_payload_data_t::message)> json;
-  json[MCMT_DEVICE_NAME] = deviceName;
+  DynamicJsonDocument json(sizeof(esp_now_payload_data_t::message));
+  json[MCMT_DEVICE_NAME] = config.deviceName;
   json[MCMT_DEVICE_UNIT] = 1;
   json[MCMT_COMPONENT_TYPE] = HACT_LIGHT;
-  json[MCMT_DEVICE_CLASS] = ledType;
+  json[MCMT_DEVICE_CLASS] = config.ledType;
   serializeJsonPretty(json, outgoingData.message);
   memcpy(&message.message, &outgoingData, sizeof(esp_now_payload_data_t));
   message.id = myNet.sendUnicastMessage(message.message, gatewayMAC, true);
@@ -365,7 +397,7 @@ void sendStatusMessage()
   statusMessageTimerSemaphore = false;
   esp_now_payload_data_t outgoingData{ENDT_LED, ENPT_STATE};
   espnow_message_t message;
-  StaticJsonDocument<sizeof(esp_now_payload_data_t::message)> json;
+  DynamicJsonDocument json(sizeof(esp_now_payload_data_t::message));
   json["state"] = ledStatus ? "ON" : "OFF";
   json["brightness"] = brightness;
   json["temperature"] = temperature;
@@ -398,61 +430,61 @@ void changeLedState(void)
   {
     if (red == 255 && green == 255 && blue == 255)
     {
-      if (ledType == ENLT_W || ledType == ENLT_RGBW)
-        analogWrite(coldWhitePin, brightness);
-      if (ledType == ENLT_WW || ledType == ENLT_RGBWW)
+      if (config.ledType == ENLT_W || config.ledType == ENLT_RGBW)
+        analogWrite(config.coldWhitePin, brightness);
+      if (config.ledType == ENLT_WW || config.ledType == ENLT_RGBWW)
       {
-        analogWrite(coldWhitePin, map(brightness, 0, 255, 0, map(temperature, 500, 153, 0, 255)));
-        analogWrite(warmWhitePin, map(brightness, 0, 255, 0, map(temperature, 153, 500, 0, 255)));
+        analogWrite(config.coldWhitePin, map(brightness, 0, 255, 0, map(temperature, 500, 153, 0, 255)));
+        analogWrite(config.warmWhitePin, map(brightness, 0, 255, 0, map(temperature, 153, 500, 0, 255)));
       }
-      if (ledType == ENLT_RGB)
+      if (config.ledType == ENLT_RGB)
       {
-        analogWrite(redPin, map(red, 0, 255, 0, brightness));
-        analogWrite(greenPin, map(green, 0, 255, 0, brightness));
-        analogWrite(bluePin, map(blue, 0, 255, 0, brightness));
+        analogWrite(config.redPin, map(red, 0, 255, 0, brightness));
+        analogWrite(config.greenPin, map(green, 0, 255, 0, brightness));
+        analogWrite(config.bluePin, map(blue, 0, 255, 0, brightness));
       }
-      if (ledType == ENLT_RGBW || ledType == ENLT_RGBWW)
+      if (config.ledType == ENLT_RGBW || config.ledType == ENLT_RGBWW)
       {
-        digitalWrite(redPin, LOW);
-        digitalWrite(greenPin, LOW);
-        digitalWrite(bluePin, LOW);
+        digitalWrite(config.redPin, LOW);
+        digitalWrite(config.greenPin, LOW);
+        digitalWrite(config.bluePin, LOW);
       }
     }
     else
     {
-      if (ledType == ENLT_W)
-        analogWrite(coldWhitePin, brightness);
-      if (ledType == ENLT_WW)
+      if (config.ledType == ENLT_W)
+        analogWrite(config.coldWhitePin, brightness);
+      if (config.ledType == ENLT_WW)
       {
-        analogWrite(coldWhitePin, map(brightness, 0, 255, 0, map(temperature, 500, 153, 0, 255)));
-        analogWrite(warmWhitePin, map(brightness, 0, 255, 0, map(temperature, 153, 500, 0, 255)));
+        analogWrite(config.coldWhitePin, map(brightness, 0, 255, 0, map(temperature, 500, 153, 0, 255)));
+        analogWrite(config.warmWhitePin, map(brightness, 0, 255, 0, map(temperature, 153, 500, 0, 255)));
       }
-      if (ledType == ENLT_RGBW || ledType == ENLT_RGBWW)
-        digitalWrite(coldWhitePin, LOW);
-      if (ledType == ENLT_RGBWW)
-        digitalWrite(warmWhitePin, LOW);
-      if (ledType == ENLT_RGB || ledType == ENLT_RGBW || ledType == ENLT_RGBWW)
+      if (config.ledType == ENLT_RGBW || config.ledType == ENLT_RGBWW)
+        digitalWrite(config.coldWhitePin, LOW);
+      if (config.ledType == ENLT_RGBWW)
+        digitalWrite(config.warmWhitePin, LOW);
+      if (config.ledType == ENLT_RGB || config.ledType == ENLT_RGBW || config.ledType == ENLT_RGBWW)
       {
-        analogWrite(redPin, map(red, 0, 255, 0, brightness));
-        analogWrite(greenPin, map(green, 0, 255, 0, brightness));
-        analogWrite(bluePin, map(blue, 0, 255, 0, brightness));
+        analogWrite(config.redPin, map(red, 0, 255, 0, brightness));
+        analogWrite(config.greenPin, map(green, 0, 255, 0, brightness));
+        analogWrite(config.bluePin, map(blue, 0, 255, 0, brightness));
       }
     }
   }
   else
   {
-    if (ledType == ENLT_W || ledType == ENLT_WW || ledType == ENLT_RGBW || ledType == ENLT_RGBWW)
-      digitalWrite(coldWhitePin, LOW);
-    if (ledType == ENLT_WW || ledType == ENLT_RGBWW)
-      digitalWrite(warmWhitePin, LOW);
-    if (ledType == ENLT_RGB || ledType == ENLT_RGBW || ledType == ENLT_RGBWW)
+    if (config.ledType == ENLT_W || config.ledType == ENLT_WW || config.ledType == ENLT_RGBW || config.ledType == ENLT_RGBWW)
+      digitalWrite(config.coldWhitePin, LOW);
+    if (config.ledType == ENLT_WW || config.ledType == ENLT_RGBWW)
+      digitalWrite(config.warmWhitePin, LOW);
+    if (config.ledType == ENLT_RGB || config.ledType == ENLT_RGBW || config.ledType == ENLT_RGBWW)
     {
-      digitalWrite(redPin, LOW);
-      digitalWrite(greenPin, LOW);
-      digitalWrite(bluePin, LOW);
+      digitalWrite(config.redPin, LOW);
+      digitalWrite(config.greenPin, LOW);
+      digitalWrite(config.bluePin, LOW);
     }
   }
-  saveConfig();
+  saveStatus();
 }
 
 void gatewayAvailabilityCheckTimerCallback()
